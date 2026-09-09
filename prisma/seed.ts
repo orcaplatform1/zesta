@@ -34,6 +34,12 @@ async function main() {
     { slug: 'kargo-teslimat', title: 'Kargo & Teslimat', content: '' },
     { slug: 'iade-degisim', title: 'İade & Değişim', content: '' },
     { slug: 'gizlilik-kvkk', title: 'Gizlilik / KVKK / Kullanım Koşulları', content: '' },
+    // Detaylı hukuki metinler admin panelden (Sayfalar) girildi — burada sadece
+    // satır bulunmasını garanti ediyoruz, `update: {}` mevcut içeriği ezmez.
+    { slug: 'kvkk', title: 'KVKK Aydınlatma Metni', content: '' },
+    { slug: 'mesafeli-satis-sozlesmesi', title: 'Mesafeli Satış Sözleşmesi', content: '' },
+    { slug: 'cerez-politikasi', title: 'Çerez Politikası', content: '' },
+    { slug: 'gizlilik-politikasi', title: 'Gizlilik Politikası', content: '' },
   ];
 
   for (const page of pages) {
