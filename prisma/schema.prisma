@@ -41,6 +41,7 @@ model Customer {
   passwordHash String?
   name         String
   phone        String?
+  birthDate    DateTime? @db.Date
   createdAt    DateTime  @default(now())
   updatedAt    DateTime  @updatedAt
 
@@ -225,6 +226,20 @@ model Order {
   district    String
   postalCode  String?
   addressLine String
+
+  // Fatura bilgileri — "individual" (TC kimlik no, iyzico zorunlu kılıyor) veya
+  // "corporate" (unvan/vergi no/vergi dairesi). Fatura adresi teslimat adresinden
+  // farklıysa billingSameAsShipping=false ve billing* alanları doldurulur.
+  invoiceType            String  @default("individual")
+  identityNumber         String?
+  companyName            String?
+  taxNumber              String?
+  taxOffice              String?
+  billingSameAsShipping  Boolean @default(true)
+  billingCity            String?
+  billingDistrict        String?
+  billingPostalCode      String?
+  billingAddressLine     String?
 
   subtotal      Decimal @db.Decimal(10, 2)
   shippingCost  Decimal @default(0) @db.Decimal(10, 2)

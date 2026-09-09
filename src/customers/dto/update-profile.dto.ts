@@ -1,12 +1,18 @@
-import { IsOptional, IsString, MinLength } from 'class-validator';
+import { IsDateString, IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
 
+// Kayıt sonrası isim/soyisim değiştirilemez (siparişlerdeki kimlik bilgisiyle
+// tutarlılık için) — sadece iletişim/hesap bilgileri burada düzenlenir.
 export class UpdateProfileDto {
   @IsOptional()
-  @IsString()
-  @MinLength(2)
-  name?: string;
+  @IsEmail()
+  email?: string;
 
   @IsOptional()
   @IsString()
+  @MinLength(6)
   phone?: string;
+
+  @IsOptional()
+  @IsDateString()
+  birthDate?: string;
 }

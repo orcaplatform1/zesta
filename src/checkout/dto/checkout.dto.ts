@@ -1,4 +1,4 @@
-import { IsEmail, IsOptional, IsString, Matches, MinLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsIn, IsOptional, IsString, Matches, MinLength, ValidateIf } from 'class-validator';
 
 export class CheckoutDto {
   @IsEmail()
@@ -30,8 +30,49 @@ export class CheckoutDto {
   @IsString()
   couponCode?: string;
 
-  // Ödeme sağlayıcısı (iyzico) aktifken zorunlu — bkz. PaymentsService.initiate
+  // Fatura bilgileri — bireysel: TC kimlik no (iyzico zorunlu kılıyor),
+  // kurumsal: unvan/vergi no/vergi dairesi.
   @IsOptional()
+  @IsIn(['individual', 'corporate'])
+  invoiceType?: 'individual' | 'corporate' = 'individual';
+
+  @ValidateIf((o) => (o.invoiceType ?? 'individual') === 'individual')
   @Matches(/^\d{11}$/, { message: 'TC Kimlik No 11 haneli olmalı' })
   identityNumber?: string;
+
+  @ValidateIf((o) => o.invoiceType === 'corporate')
+  @IsString()
+  @MinLength(2)
+  companyName?: string;
+
+  @ValidateIf((o) => o.invoiceType === 'corporate')
+  @Matches(/^\d{10}$/, { message: 'Vergi No 10 haneli olmalı' })
+  taxNumber?: string;
+
+  @ValidateIf((o) => o.invoiceType === 'corporate')
+  @IsString()
+  @MinLength(2)
+  taxOffice?: string;
+
+  // Fatura adresi teslimat adresinden farklıysa (varsayılan: aynı).
+  @IsOptional()
+  @IsBoolean()
+  billingSameAsShipping?: boolean = true;
+
+  @ValidateIf((o) => o.billingSameAsShipping === false)
+  @IsString()
+  billingCity?: string;
+
+  @ValidateIf((o) => o.billingSameAsShipping === false)
+  @IsString()
+  billingDistrict?: string;
+
+  @IsOptional()
+  @IsString()
+  billingPostalCode?: string;
+
+  @ValidateIf((o) => o.billingSameAsShipping === false)
+  @IsString()
+  @MinLength(5)
+  billingAddressLine?: string;
 }

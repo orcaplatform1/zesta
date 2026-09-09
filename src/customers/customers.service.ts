@@ -1,14 +1,40 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import { AuthService } from '../auth/auth.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { ChangePasswordDto } from './dto/change-password.dto.js';
 import { UpdateProfileDto } from './dto/update-profile.dto.js';
 import { UpsertAddressDto } from './dto/upsert-address.dto.js';
 
 @Injectable()
 export class CustomersService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly auth: AuthService,
+  ) {}
 
-  updateProfile(customerId: string, dto: UpdateProfileDto) {
-    return this.prisma.customer.update({ where: { id: customerId }, data: dto });
+  async updateProfile(customerId: string, dto: UpdateProfileDto) {
+    if (dto.email) {
+      const existing = await this.prisma.customer.findUnique({ where: { email: dto.email } });
+      if (existing && existing.id !== customerId) throw new ConflictException('Bu e-posta zaten kayıtlı');
+    }
+    const { birthDate, ...rest } = dto;
+    return this.prisma.customer.update({
+      where: { id: customerId },
+      data: { ...rest, birthDate: birthDate ? new Date(birthDate) : undefined },
+      select: { id: true, email: true, name: true, phone: true, birthDate: true },
+    });
+  }
+
+  async changePassword(customerId: string, dto: ChangePasswordDto) {
+    const customer = await this.prisma.customer.findUnique({ where: { id: customerId } });
+    if (!customer || !customer.passwordHash) throw new NotFoundException('Hesap bulunamadı');
+
+    const ok = await this.auth.verifyPassword(customer.passwordHash, dto.currentPassword);
+    if (!ok) throw new UnauthorizedException('Mevcut şifre hatalı');
+
+    const passwordHash = await this.auth.hashPassword(dto.newPassword);
+    await this.prisma.customer.update({ where: { id: customerId }, data: { passwordHash } });
+    return { ok: true };
   }
 
   listAddresses(customerId: string) {

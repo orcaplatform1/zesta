@@ -31,7 +31,13 @@ export class CustomerAuthController {
 
     const passwordHash = await this.auth.hashPassword(dto.password);
     const customer = await this.prisma.customer.create({
-      data: { email: dto.email, passwordHash, name: dto.name },
+      data: {
+        email: dto.email,
+        passwordHash,
+        name: dto.name,
+        phone: dto.phone,
+        birthDate: dto.birthDate ? new Date(dto.birthDate) : undefined,
+      },
     });
 
     const token = await this.auth.sign({ sub: customer.id, type: 'customer' });
@@ -67,6 +73,12 @@ export class CustomerAuthController {
   async me(@CurrentCustomer() customer: { sub: string }) {
     const record = await this.prisma.customer.findUnique({ where: { id: customer.sub } });
     if (!record) throw new UnauthorizedException();
-    return { id: record.id, email: record.email, name: record.name, phone: record.phone };
+    return {
+      id: record.id,
+      email: record.email,
+      name: record.name,
+      phone: record.phone,
+      birthDate: record.birthDate,
+    };
   }
 }

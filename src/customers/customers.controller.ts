@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, Patch, Post, UseGuards } from '@n
 import { CurrentCustomer } from '../auth/decorators/current-customer.decorator.js';
 import { CustomerAuthGuard } from '../auth/guards/customer-auth.guard.js';
 import { CustomersService } from './customers.service.js';
+import { ChangePasswordDto } from './dto/change-password.dto.js';
 import { UpdateProfileDto } from './dto/update-profile.dto.js';
 import { UpsertAddressDto } from './dto/upsert-address.dto.js';
 
@@ -13,6 +14,11 @@ export class CustomersController {
   @Patch('profile')
   updateProfile(@CurrentCustomer() customer: { sub: string }, @Body() dto: UpdateProfileDto) {
     return this.customers.updateProfile(customer.sub, dto);
+  }
+
+  @Patch('password')
+  changePassword(@CurrentCustomer() customer: { sub: string }, @Body() dto: ChangePasswordDto) {
+    return this.customers.changePassword(customer.sub, dto);
   }
 
   @Get('addresses')
