@@ -90,13 +90,44 @@ export class CheckoutService {
         await tx.couponUsage.create({ data: { couponId, orderId: created.id, customerId } });
       }
 
-      await tx.cartItem.deleteMany({ where: { cartId: cart.id } });
-
       return created;
     });
 
-    const payment = await this.payments.initiate(order.id);
+    let payment: Awaited<ReturnType<PaymentsService['initiate']>>;
+    try {
+      payment = await this.payments.initiate(order.id, {
+        ip: req.ip ?? '127.0.0.1',
+        identityNumber: dto.identityNumber,
+      });
+    } catch (err) {
+      // Ödeme başlatılamadı (ör. yanlış iyzico anahtarı) — siparişi ve stok düşümünü
+      // geri al ki müşterinin sepeti bozulmasın, tekrar deneyebilsin.
+      await this.rollbackOrder(order.id, cart.items, couponId);
+      throw err;
+    }
+
+    await this.prisma.cartItem.deleteMany({ where: { cartId: cart.id } });
 
     return { order, payment };
+  }
+
+  private async rollbackOrder(
+    orderId: string,
+    items: { productId: string; variantId: string | null; quantity: number; variant: { stock: number | null } | null }[],
+    couponId: string | undefined,
+  ) {
+    await this.prisma.$transaction(async (tx) => {
+      for (const item of items) {
+        if (item.variantId && item.variant?.stock !== null && item.variant?.stock !== undefined) {
+          await tx.productVariant.update({ where: { id: item.variantId }, data: { stock: { increment: item.quantity } } });
+        } else {
+          await tx.product.update({ where: { id: item.productId }, data: { stock: { increment: item.quantity } } });
+        }
+      }
+      if (couponId) {
+        await tx.couponUsage.deleteMany({ where: { orderId } });
+      }
+      await tx.order.delete({ where: { id: orderId } });
+    });
   }
 }

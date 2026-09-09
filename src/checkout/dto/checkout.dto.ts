@@ -1,4 +1,4 @@
-import { IsEmail, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, Matches, MinLength } from 'class-validator';
 
 export class CheckoutDto {
   @IsEmail()
@@ -29,4 +29,9 @@ export class CheckoutDto {
   @IsOptional()
   @IsString()
   couponCode?: string;
+
+  // Ödeme sağlayıcısı (iyzico) aktifken zorunlu — bkz. PaymentsService.initiate
+  @IsOptional()
+  @Matches(/^\d{11}$/, { message: 'TC Kimlik No 11 haneli olmalı' })
+  identityNumber?: string;
 }

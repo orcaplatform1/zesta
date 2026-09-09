@@ -10,6 +10,8 @@ import { AppModule } from './app.module.js';
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule);
 
+  // nginx arkasında çalışıyor — gerçek istemci IP'si (iyzico gibi entegrasyonlar için) X-Forwarded-For'dan okunsun.
+  app.set('trust proxy', 1);
   app.use(helmet());
   app.use(cookieParser());
   app.useStaticAssets(join(process.cwd(), 'storage', 'uploads'), { prefix: '/media/' });
