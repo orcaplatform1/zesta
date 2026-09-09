@@ -4,6 +4,16 @@ import { AdminCreateReviewDto } from './dto/admin-create-review.dto.js';
 import { AdminUpdateReviewDto } from './dto/admin-update-review.dto.js';
 import { CreateReviewDto } from './dto/create-review.dto.js';
 
+// Yorumda kimsenin soyadı tam görünmesin diye hesap adı "İsim S." biçimine
+// indirgeniyor (ör. "Ayşe Yılmaz" -> "Ayşe Y.").
+function toDisplayName(fullName: string): string {
+  const parts = fullName.trim().split(/\s+/);
+  if (parts.length < 2) return fullName;
+  const first = parts[0];
+  const lastInitial = parts[parts.length - 1][0];
+  return `${first} ${lastInitial}.`;
+}
+
 @Injectable()
 export class ReviewsService {
   constructor(private readonly prisma: PrismaService) {}
@@ -19,7 +29,7 @@ export class ReviewsService {
     const customer = await this.prisma.customer.findUnique({ where: { id: customerId } });
     if (!customer) throw new UnauthorizedException();
     return this.prisma.review.create({
-      data: { ...dto, customerId, authorName: customer.name, isApproved: false },
+      data: { ...dto, customerId, authorName: toDisplayName(customer.name), isApproved: false },
     });
   }
 

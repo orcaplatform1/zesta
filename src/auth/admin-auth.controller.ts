@@ -3,7 +3,7 @@ import type { Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuthService } from './auth.service.js';
 import { CurrentAdmin } from './decorators/current-admin.decorator.js';
-import { LoginDto } from './dto/login.dto.js';
+import { AdminLoginDto } from './dto/admin-login.dto.js';
 import { AdminAuthGuard } from './guards/admin-auth.guard.js';
 
 @Controller('admin/auth')
@@ -15,7 +15,7 @@ export class AdminAuthController {
 
   @Post('login')
   @HttpCode(200)
-  async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
+  async login(@Body() dto: AdminLoginDto, @Res({ passthrough: true }) res: Response) {
     const admin = await this.prisma.adminUser.findUnique({ where: { email: dto.email } });
     if (!admin || !admin.isActive) throw new UnauthorizedException('Geçersiz kimlik bilgileri');
 
