@@ -1,5 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { AdminCreateReviewDto } from './dto/admin-create-review.dto.js';
+import { AdminUpdateReviewDto } from './dto/admin-update-review.dto.js';
 import { CreateReviewDto } from './dto/create-review.dto.js';
 
 @Injectable()
@@ -13,9 +15,11 @@ export class ReviewsService {
     });
   }
 
-  create(dto: CreateReviewDto, customerId?: string) {
+  async create(dto: CreateReviewDto, customerId: string) {
+    const customer = await this.prisma.customer.findUnique({ where: { id: customerId } });
+    if (!customer) throw new UnauthorizedException();
     return this.prisma.review.create({
-      data: { ...dto, customerId, isApproved: false },
+      data: { ...dto, customerId, authorName: customer.name, isApproved: false },
     });
   }
 
@@ -24,6 +28,19 @@ export class ReviewsService {
       include: { product: { select: { name: true, slug: true } } },
       orderBy: { createdAt: 'desc' },
     });
+  }
+
+  // Admin panelden dogrudan eklenen yorum — kendi onayladigi icin varsayilan onayli.
+  adminCreate(dto: AdminCreateReviewDto) {
+    return this.prisma.review.create({
+      data: { ...dto, isApproved: dto.isApproved ?? true },
+    });
+  }
+
+  async adminUpdate(id: string, dto: AdminUpdateReviewDto) {
+    const review = await this.prisma.review.findUnique({ where: { id } });
+    if (!review) throw new NotFoundException('Yorum bulunamadı');
+    return this.prisma.review.update({ where: { id }, data: dto });
   }
 
   async setApproved(id: string, isApproved: boolean) {
