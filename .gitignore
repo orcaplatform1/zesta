@@ -1,5 +1,8 @@
 node_modules
 dist
+src/generated
+storage/uploads/*
+!storage/uploads/.gitkeep
 .env
 *.log
 *.tsbuildinfo
