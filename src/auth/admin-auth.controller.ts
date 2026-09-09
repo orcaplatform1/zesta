@@ -16,7 +16,8 @@ export class AdminAuthController {
   @Post('login')
   @HttpCode(200)
   async login(@Body() dto: AdminLoginDto, @Res({ passthrough: true }) res: Response) {
-    const admin = await this.prisma.adminUser.findUnique({ where: { email: dto.email } });
+    // E-posta/kullanıcı adı büyük-küçük harfe duyarsız — şifre duyarlı kalır.
+    const admin = await this.prisma.adminUser.findUnique({ where: { email: dto.email.trim().toLowerCase() } });
     if (!admin || !admin.isActive) throw new UnauthorizedException('Geçersiz kimlik bilgileri');
 
     const ok = await this.auth.verifyPassword(admin.passwordHash, dto.password);

@@ -13,14 +13,15 @@ export class CustomersService {
   ) {}
 
   async updateProfile(customerId: string, dto: UpdateProfileDto) {
-    if (dto.email) {
-      const existing = await this.prisma.customer.findUnique({ where: { email: dto.email } });
+    const email = dto.email ? dto.email.trim().toLowerCase() : undefined;
+    if (email) {
+      const existing = await this.prisma.customer.findUnique({ where: { email } });
       if (existing && existing.id !== customerId) throw new ConflictException('Bu e-posta zaten kayıtlı');
     }
     const { birthDate, ...rest } = dto;
     return this.prisma.customer.update({
       where: { id: customerId },
-      data: { ...rest, birthDate: birthDate ? new Date(birthDate) : undefined },
+      data: { ...rest, email, birthDate: birthDate ? new Date(birthDate) : undefined },
       select: { id: true, email: true, name: true, phone: true, birthDate: true },
     });
   }

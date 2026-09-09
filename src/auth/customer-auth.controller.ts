@@ -26,13 +26,15 @@ export class CustomerAuthController {
 
   @Post('register')
   async register(@Body() dto: RegisterCustomerDto, @Res({ passthrough: true }) res: Response) {
-    const existing = await this.prisma.customer.findUnique({ where: { email: dto.email } });
+    // E-posta büyük-küçük harfe duyarsız — hem kontrol hem kayıt küçük harfle yapılır.
+    const email = dto.email.trim().toLowerCase();
+    const existing = await this.prisma.customer.findUnique({ where: { email } });
     if (existing) throw new ConflictException('Bu e-posta zaten kayıtlı');
 
     const passwordHash = await this.auth.hashPassword(dto.password);
     const customer = await this.prisma.customer.create({
       data: {
-        email: dto.email,
+        email,
         passwordHash,
         name: dto.name,
         phone: dto.phone,
@@ -49,7 +51,7 @@ export class CustomerAuthController {
   @Post('login')
   @HttpCode(200)
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {
-    const customer = await this.prisma.customer.findUnique({ where: { email: dto.email } });
+    const customer = await this.prisma.customer.findUnique({ where: { email: dto.email.trim().toLowerCase() } });
     if (!customer || !customer.passwordHash) throw new UnauthorizedException('Geçersiz kimlik bilgileri');
 
     const ok = await this.auth.verifyPassword(customer.passwordHash, dto.password);
