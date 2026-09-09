@@ -47,11 +47,27 @@ export class ProductsService {
     return product;
   }
 
-  adminFindAll() {
-    return this.prisma.product.findMany({
-      include: includeRelations,
-      orderBy: { createdAt: 'desc' },
-    });
+  async adminFindAll(query: QueryProductsDto) {
+    const page = query.page ?? 1;
+    const pageSize = query.pageSize ?? 30;
+
+    const where = {
+      ...(query.category ? { category: { slug: query.category } } : {}),
+      ...(query.search ? { name: { contains: query.search, mode: 'insensitive' as const } } : {}),
+    };
+
+    const [items, total] = await Promise.all([
+      this.prisma.product.findMany({
+        where,
+        include: includeRelations,
+        orderBy: { createdAt: 'desc' },
+        skip: (page - 1) * pageSize,
+        take: pageSize,
+      }),
+      this.prisma.product.count({ where }),
+    ]);
+
+    return { items, total, page, pageSize };
   }
 
   async adminFindOne(id: string) {

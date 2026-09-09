@@ -16,8 +16,8 @@ export class ProductsController {
 
   @Get('admin/list')
   @UseGuards(AdminAuthGuard)
-  adminFindAll() {
-    return this.products.adminFindAll();
+  adminFindAll(@Query() query: QueryProductsDto) {
+    return this.products.adminFindAll(query);
   }
 
   @Get(':slug')
