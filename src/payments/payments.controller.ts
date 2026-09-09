@@ -44,11 +44,11 @@ export class PaymentsController {
     try {
       const { success, order } = await this.payments.handleIyzicoCallback(token);
       const target = success
-        ? `${frontendBase}/order-success?orderNumber=${order.orderNumber}&email=${encodeURIComponent(order.email)}`
-        : `${frontendBase}/order-failed?orderNumber=${order.orderNumber}`;
+        ? `${frontendBase}/siparis-basarili?orderNumber=${order.orderNumber}&email=${encodeURIComponent(order.email)}`
+        : `${frontendBase}/siparis-basarisiz?orderNumber=${order.orderNumber}`;
       return res.redirect(target);
     } catch {
-      return res.redirect(`${frontendBase}/order-failed`);
+      return res.redirect(`${frontendBase}/siparis-basarisiz`);
     }
   }
 
