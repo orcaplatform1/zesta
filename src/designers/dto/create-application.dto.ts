@@ -1,9 +1,13 @@
-import { IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsBoolean, IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class CreateDesignerApplicationDto {
   @IsString()
   @MinLength(2)
   name!: string;
+
+  @IsString()
+  @MinLength(2)
+  brandName!: string;
 
   @IsEmail()
   email!: string;
@@ -16,6 +20,9 @@ export class CreateDesignerApplicationDto {
   @MinLength(6)
   @MaxLength(20)
   password!: string;
+
+  @IsBoolean()
+  canInvoice!: boolean;
 
   @IsString()
   category!: string;

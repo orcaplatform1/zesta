@@ -429,9 +429,11 @@ enum PayoutStatus {
 model DesignerApplication {
   id            String            @id @default(cuid())
   name          String
+  brandName     String // mağaza/marka adı — ürün sayfalarında ve panelde görünür
   email         String            @unique
   phone         String
   passwordHash  String
+  canInvoice    Boolean // fatura kesebiliyor mu (şahıs/şirket vergi mükellefi)
   category      String // seçilen kategori slug'ı, ya da "diger"
   otherCategory String? // "diger" seçildiyse serbest metin
   message       String            @db.Text
@@ -450,9 +452,11 @@ model Designer {
   application   DesignerApplication @relation(fields: [applicationId], references: [id])
 
   name         String
+  brandName    String
   email        String  @unique
   phone        String
   passwordHash String
+  canInvoice   Boolean
 
   commissionPct      Int     @default(15) // Zesta'nın komisyon oranı
   isActive           Boolean @default(true) // false = hesap askıya alınmış

@@ -1,5 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
 import { AuthService } from '../auth/auth.service.js';
+import { Prisma } from '../generated/prisma/client.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateDesignerApplicationDto } from './dto/create-application.dto.js';
 import { CreateDesignerProductDto } from './dto/create-designer-product.dto.js';
@@ -35,20 +36,30 @@ export class DesignersService {
       this.prisma.designerApplication.findUnique({ where: { email } }),
       this.prisma.designer.findUnique({ where: { email } }),
     ]);
-    if (existingApp || existingDesigner) throw new ConflictException('Bu e-posta ile zaten bir başvuru var');
+    if (existingDesigner) throw new ConflictException('Bu e-posta ile zaten bir tasarımcı hesabı var');
+    // Reddedilen bir başvuru varsa yeniden başvurabilsin diye izin verilir —
+    // yalnızca PENDING/APPROVED durumundaki başvurular tekrarı engeller.
+    if (existingApp && existingApp.status !== 'REJECTED') {
+      throw new ConflictException('Bu e-posta ile zaten bir başvuru var');
+    }
 
     const passwordHash = await this.auth.hashPassword(dto.password);
-    const application = await this.prisma.designerApplication.create({
-      data: {
-        name: dto.name,
-        email,
-        phone: dto.phone,
-        passwordHash,
-        category: dto.category,
-        otherCategory: dto.otherCategory,
-        message: dto.message,
-      },
-    });
+    const data = {
+      name: dto.name,
+      brandName: dto.brandName,
+      phone: dto.phone,
+      passwordHash,
+      canInvoice: dto.canInvoice,
+      category: dto.category,
+      otherCategory: dto.otherCategory,
+      message: dto.message,
+      status: 'PENDING' as const,
+      reviewedAt: null,
+    };
+
+    const application = existingApp
+      ? await this.prisma.designerApplication.update({ where: { email }, data })
+      : await this.prisma.designerApplication.create({ data: { ...data, email } });
     return { id: application.id };
   }
 
@@ -66,9 +77,11 @@ export class DesignersService {
         data: {
           applicationId: application.id,
           name: application.name,
+          brandName: application.brandName,
           email: application.email,
           phone: application.phone,
           passwordHash: application.passwordHash,
+          canInvoice: application.canInvoice,
         },
       });
       await tx.designerApplication.update({
@@ -106,6 +119,7 @@ export class DesignersService {
     return {
       id: designer.id,
       name: designer.name,
+      brandName: designer.brandName,
       email: designer.email,
       phone: designer.phone,
       commissionPct: designer.commissionPct,
@@ -125,30 +139,48 @@ export class DesignersService {
   }
 
   async submitProduct(designerId: string, dto: CreateDesignerProductDto) {
-    const existing = await this.prisma.product.findUnique({ where: { slug: dto.slug } });
-    if (existing) throw new ConflictException('Bu slug zaten kullanılıyor');
+    await this.assertActive(designerId);
 
     const { images, variants, ...data } = dto;
     const sku = `DSG-${designerId.slice(-6)}-${Date.now().toString(36).toUpperCase()}`;
 
-    return this.prisma.product.create({
-      data: {
-        ...data,
-        sku,
-        designerId,
-        approvalStatus: 'PENDING',
-        isActive: false,
-        images: images?.length ? { create: images } : undefined,
-        variants: variants?.length ? { create: variants } : undefined,
-      },
-      include: includeRelations,
-    });
+    try {
+      return await this.prisma.product.create({
+        data: {
+          ...data,
+          sku,
+          designerId,
+          approvalStatus: 'PENDING',
+          isActive: false,
+          images: images?.length ? { create: images } : undefined,
+          variants: variants?.length ? { create: variants } : undefined,
+        },
+        include: includeRelations,
+      });
+    } catch (err) {
+      // findUnique + create arasında slug'ı önceden kontrol etmek yarış
+      // durumuna açıktı — eşzamanlı iki gönderim aynı slug'ı geçebilir,
+      // asıl güvence burada unique constraint'in kendisi.
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+        throw new ConflictException('Bu slug zaten kullanılıyor');
+      }
+      throw err;
+    }
+  }
+
+  private async assertActive(designerId: string) {
+    const designer = await this.prisma.designer.findUnique({ where: { id: designerId }, select: { isActive: true } });
+    if (!designer) throw new NotFoundException('Tasarımcı bulunamadı');
+    if (!designer.isActive) throw new UnauthorizedException('Hesabınız askıya alınmış');
   }
 
   // ---------- İstatistik & Bakiye ----------
 
-  async myStats(designerId: string) {
-    const items = await this.prisma.orderItem.findMany({
+  // `db` parametresi requestPayout'un serializable transaction içinden aynı
+  // hesaplamayı tekrar kullanabilmesi için var (bkz. requestPayout) — normal
+  // çağrılarda varsayılan olarak this.prisma kullanılır.
+  async myStats(designerId: string, db: PrismaService | Prisma.TransactionClient = this.prisma) {
+    const items = await db.orderItem.findMany({
       where: { product: { designerId }, order: { status: { in: [...ACTIVE_ORDER_STATUSES] } } },
       include: { order: { select: { createdAt: true, status: true } } },
     });
@@ -168,11 +200,11 @@ export class DesignersService {
       }
     }
 
-    const designer = await this.prisma.designer.findUniqueOrThrow({ where: { id: designerId } });
+    const designer = await db.designer.findUniqueOrThrow({ where: { id: designerId } });
     const commissionPct = designer.commissionPct;
     const eligibleNet = eligibleGross * (1 - commissionPct / 100);
 
-    const payoutAgg = await this.prisma.payoutRequest.groupBy({
+    const payoutAgg = await db.payoutRequest.groupBy({
       by: ['status'],
       where: { designerId, status: { in: ['PENDING', 'PAID'] } },
       _sum: { amount: true },
@@ -180,9 +212,9 @@ export class DesignersService {
     const reserved = payoutAgg.reduce((sum, row) => sum + Number(row._sum.amount ?? 0), 0);
 
     const [productCount, pendingProductCount, orderCount] = await Promise.all([
-      this.prisma.product.count({ where: { designerId, approvalStatus: 'APPROVED' } }),
-      this.prisma.product.count({ where: { designerId, approvalStatus: 'PENDING' } }),
-      this.prisma.orderItem
+      db.product.count({ where: { designerId, approvalStatus: 'APPROVED' } }),
+      db.product.count({ where: { designerId, approvalStatus: 'PENDING' } }),
+      db.orderItem
         .findMany({ where: { product: { designerId } }, distinct: ['orderId'], select: { orderId: true } })
         .then((rows) => rows.length),
     ]);
@@ -202,11 +234,28 @@ export class DesignersService {
   // ---------- Ödeme talepleri ----------
 
   async requestPayout(designerId: string, dto: RequestPayoutDto) {
-    const stats = await this.myStats(designerId);
-    if (dto.amount > stats.availableBalance) {
-      throw new BadRequestException('Talep edilen tutar çekilebilir bakiyenizden fazla');
+    await this.assertActive(designerId);
+
+    try {
+      // Bakiye hesaplama ve talep oluşturma serializable transaction içinde —
+      // aksi halde iki eşzamanlı istek aynı bakiyeyi görüp ikisi de geçebilir
+      // (ör. iki sekme, çift tıklama) ve toplamda bakiyeyi aşan tutar talep edilir.
+      return await this.prisma.$transaction(
+        async (tx) => {
+          const stats = await this.myStats(designerId, tx);
+          if (dto.amount > stats.availableBalance) {
+            throw new BadRequestException('Talep edilen tutar çekilebilir bakiyenizden fazla');
+          }
+          return tx.payoutRequest.create({ data: { designerId, amount: dto.amount } });
+        },
+        { isolationLevel: Prisma.TransactionIsolationLevel.Serializable },
+      );
+    } catch (err) {
+      if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2034') {
+        throw new BadRequestException('Talebiniz işlenemedi, lütfen tekrar deneyin');
+      }
+      throw err;
     }
-    return this.prisma.payoutRequest.create({ data: { designerId, amount: dto.amount } });
   }
 
   myPayouts(designerId: string) {
@@ -223,12 +272,14 @@ export class DesignersService {
   async adminMarkPayoutPaid(id: string) {
     const payout = await this.prisma.payoutRequest.findUnique({ where: { id } });
     if (!payout) throw new NotFoundException('Ödeme talebi bulunamadı');
+    if (payout.status !== 'PENDING') throw new BadRequestException('Bu talep zaten sonuçlandırılmış');
     return this.prisma.payoutRequest.update({ where: { id }, data: { status: 'PAID', paidAt: new Date() } });
   }
 
   async adminRejectPayout(id: string) {
     const payout = await this.prisma.payoutRequest.findUnique({ where: { id } });
     if (!payout) throw new NotFoundException('Ödeme talebi bulunamadı');
+    if (payout.status !== 'PENDING') throw new BadRequestException('Bu talep zaten sonuçlandırılmış');
     return this.prisma.payoutRequest.update({ where: { id }, data: { status: 'REJECTED' } });
   }
 
@@ -244,10 +295,9 @@ export class DesignersService {
   async adminSetActive(id: string, isActive: boolean) {
     const designer = await this.prisma.designer.findUnique({ where: { id } });
     if (!designer) throw new NotFoundException('Tasarımcı bulunamadı');
-    return this.prisma.designer.update({
-      where: { id },
-      data: { isActive, shipViolationCount: isActive ? 0 : designer.shipViolationCount },
-    });
+    // İhlal sayısı reaktivasyonda SIFIRLANMAZ — geçmiş, admin listede görünür
+    // kalsın diye bilinçli olarak korunuyor; gerekirse admin ayrıca sıfırlar.
+    return this.prisma.designer.update({ where: { id }, data: { isActive } });
   }
 
   // 7 gün içinde kargolanmamış (status hâlâ PAID/PREPARING) siparişleri, hangi
