@@ -111,6 +111,13 @@ model Product {
   categoryId String?
   category   Category? @relation(fields: [categoryId], references: [id])
 
+  // Tasarımcı Paneli üzerinden eklenen ürünler — designerId doluysa ürün bir
+  // tasarımcıya aittir, admin onaylayana (approvalStatus=APPROVED) kadar
+  // isActive=false kalır ve mağazada görünmez.
+  designerId     String?
+  designer       Designer?             @relation(fields: [designerId], references: [id])
+  approvalStatus ProductApprovalStatus @default(APPROVED)
+
   images     ProductImage[]
   variants   ProductVariant[]
   reviews    Review[]
@@ -392,4 +399,86 @@ model Setting {
   value Json
 
   @@map("settings")
+}
+
+// ============================================================
+// TASARIMCI PANELİ (Zesta'da Satış Yap)
+// ============================================================
+
+enum ApplicationStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum ProductApprovalStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+enum PayoutStatus {
+  PENDING
+  PAID
+  REJECTED
+}
+
+// Başvuru formundan gelen kayıt — admin onaylayana kadar giriş yapamaz.
+// Şifre başvuru anında alınır (onay sonrası davet e-postası göndermeye gerek
+// kalmasın diye — bkz. project memory: mail altyapısı henüz kurulu değil).
+model DesignerApplication {
+  id            String            @id @default(cuid())
+  name          String
+  email         String            @unique
+  phone         String
+  passwordHash  String
+  category      String // seçilen kategori slug'ı, ya da "diger"
+  otherCategory String? // "diger" seçildiyse serbest metin
+  message       String            @db.Text
+  status        ApplicationStatus @default(PENDING)
+  reviewedAt    DateTime?
+
+  createdAt DateTime @default(now())
+  designer  Designer?
+
+  @@map("designer_applications")
+}
+
+model Designer {
+  id            String   @id @default(cuid())
+  applicationId String   @unique
+  application   DesignerApplication @relation(fields: [applicationId], references: [id])
+
+  name         String
+  email        String  @unique
+  phone        String
+  passwordHash String
+
+  commissionPct      Int     @default(15) // Zesta'nın komisyon oranı
+  isActive           Boolean @default(true) // false = hesap askıya alınmış
+  shipViolationCount Int     @default(0) // 7 gün içinde kargolamama ihlali sayısı
+
+  products       Product[]
+  payoutRequests PayoutRequest[]
+
+  createdAt DateTime @default(now())
+
+  @@map("designers")
+}
+
+// Tasarımcının talep ettiği ödeme çekimi — gerçek ödeme entegrasyonu yok,
+// admin manuel olarak "ödendi" işaretler (bkz. project memory: ödeme
+// sağlayıcı entegrasyonları lansmana kadar bekletiliyor).
+model PayoutRequest {
+  id         String       @id @default(cuid())
+  designerId String
+  designer   Designer     @relation(fields: [designerId], references: [id])
+  amount     Decimal      @db.Decimal(10, 2)
+  status     PayoutStatus @default(PENDING)
+
+  requestedAt DateTime  @default(now())
+  paidAt      DateTime?
+
+  @@index([designerId])
+  @@map("payout_requests")
 }

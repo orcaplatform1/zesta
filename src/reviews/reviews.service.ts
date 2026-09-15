@@ -25,6 +25,23 @@ export class ReviewsService {
     });
   }
 
+  // Ana sayfadaki kayan ürün vitrini gibi çok sayıda ürünü tek ekranda
+  // gösteren yerler için — her ürüne ayrı findMany yerine tek gruplu sorgu.
+  async summaryForProducts(productIds: string[]) {
+    if (productIds.length === 0) return {};
+    const rows = await this.prisma.review.groupBy({
+      by: ['productId'],
+      where: { productId: { in: productIds }, isApproved: true },
+      _avg: { rating: true },
+      _count: { rating: true },
+    });
+    const result: Record<string, { average: number; count: number }> = {};
+    for (const row of rows) {
+      result[row.productId] = { average: row._avg.rating ?? 0, count: row._count.rating };
+    }
+    return result;
+  }
+
   async create(dto: CreateReviewDto, customerId: string) {
     const customer = await this.prisma.customer.findUnique({ where: { id: customerId } });
     if (!customer) throw new UnauthorizedException();

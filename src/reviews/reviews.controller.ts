@@ -16,6 +16,17 @@ export class ReviewsController {
     return this.reviews.findApprovedForProduct(productId);
   }
 
+  // Ürün başına ayrı istek atmak yerine (ör. kayan vitrindeki 15 ürün) tek
+  // seferde ortalama puan + yorum sayısı almak için.
+  @Get('summary')
+  summary(@Query('productIds') productIds: string) {
+    const ids = (productIds ?? '')
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    return this.reviews.summaryForProducts(ids);
+  }
+
   // Yorum eklemek icin giris zorunlu — misafir/sahte isim yazamaz, authorName
   // hesabin kayitli adindan otomatik dolduruluyor (bkz. ReviewsService.create).
   @Post()

@@ -11,6 +11,7 @@ import { CategoriesModule } from './categories/categories.module.js';
 import { CheckoutModule } from './checkout/checkout.module.js';
 import { CouponsModule } from './coupons/coupons.module.js';
 import { CustomersModule } from './customers/customers.module.js';
+import { DesignersModule } from './designers/designers.module.js';
 import { MediaModule } from './media/media.module.js';
 import { OrdersModule } from './orders/orders.module.js';
 import { PagesModule } from './pages/pages.module.js';
@@ -41,6 +42,7 @@ import { ShippingModule } from './shipping/shipping.module.js';
     MediaModule,
     AdminModule,
     CustomersModule,
+    DesignersModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],

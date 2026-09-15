@@ -5,12 +5,14 @@ import type { Response } from 'express';
 
 export type TokenPayload =
   | { sub: string; type: 'admin'; role: string }
-  | { sub: string; type: 'customer' };
+  | { sub: string; type: 'customer' }
+  | { sub: string; type: 'designer' };
 
 const isProd = process.env.NODE_ENV === 'production';
 
 export const ADMIN_COOKIE = 'zesta_admin_token';
 export const CUSTOMER_COOKIE = 'zesta_customer_token';
+export const DESIGNER_COOKIE = 'zesta_designer_token';
 
 @Injectable()
 export class AuthService {
@@ -56,5 +58,13 @@ export class AuthService {
 
   clearCustomerCookie(res: Response) {
     res.clearCookie(CUSTOMER_COOKIE, { path: '/' });
+  }
+
+  setDesignerCookie(res: Response, token: string) {
+    res.cookie(DESIGNER_COOKIE, token, this.cookieOptions());
+  }
+
+  clearDesignerCookie(res: Response) {
+    res.clearCookie(DESIGNER_COOKIE, { path: '/' });
   }
 }

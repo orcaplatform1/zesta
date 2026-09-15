@@ -6,6 +6,7 @@ import { AuthService } from './auth.service.js';
 import { CustomerAuthController } from './customer-auth.controller.js';
 import { AdminAuthGuard } from './guards/admin-auth.guard.js';
 import { CustomerAuthGuard, OptionalCustomerAuthGuard } from './guards/customer-auth.guard.js';
+import { DesignerAuthGuard } from './guards/designer-auth.guard.js';
 
 @Module({
   imports: [
@@ -21,7 +22,7 @@ import { CustomerAuthGuard, OptionalCustomerAuthGuard } from './guards/customer-
     }),
   ],
   controllers: [AdminAuthController, CustomerAuthController],
-  providers: [AuthService, AdminAuthGuard, CustomerAuthGuard, OptionalCustomerAuthGuard],
-  exports: [AuthService, AdminAuthGuard, CustomerAuthGuard, OptionalCustomerAuthGuard, JwtModule],
+  providers: [AuthService, AdminAuthGuard, CustomerAuthGuard, OptionalCustomerAuthGuard, DesignerAuthGuard],
+  exports: [AuthService, AdminAuthGuard, CustomerAuthGuard, OptionalCustomerAuthGuard, DesignerAuthGuard, JwtModule],
 })
 export class AuthModule {}
