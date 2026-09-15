@@ -434,9 +434,15 @@ model DesignerApplication {
   phone         String
   passwordHash  String
   canInvoice    Boolean // fatura kesebiliyor mu (şahıs/şirket vergi mükellefi)
+  country       String
+  city          String
+  companySize   String // "Sadece Ben", "2-5", "6-10", "11-50", "50+"
+  referralSource String // "Zesta'yı nereden duydun?"
+  website       String? // opsiyonel
+  instagram     String? // opsiyonel
   category      String // seçilen kategori slug'ı, ya da "diger"
   otherCategory String? // "diger" seçildiyse serbest metin
-  message       String            @db.Text
+  message       String?           @db.Text // "Eklemek istediğin bir şey var mı?" — opsiyonel
   status        ApplicationStatus @default(PENDING)
   reviewedAt    DateTime?
 
@@ -457,6 +463,10 @@ model Designer {
   phone        String
   passwordHash String
   canInvoice   Boolean
+  country      String
+  city         String
+  website      String?
+  instagram    String?
 
   commissionPct      Int     @default(15) // Zesta'nın komisyon oranı
   isActive           Boolean @default(true) // false = hesap askıya alınmış

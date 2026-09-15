@@ -50,6 +50,12 @@ export class DesignersService {
       phone: dto.phone,
       passwordHash,
       canInvoice: dto.canInvoice,
+      country: dto.country,
+      city: dto.city,
+      companySize: dto.companySize,
+      referralSource: dto.referralSource,
+      website: dto.website,
+      instagram: dto.instagram,
       category: dto.category,
       otherCategory: dto.otherCategory,
       message: dto.message,
@@ -82,6 +88,10 @@ export class DesignersService {
           phone: application.phone,
           passwordHash: application.passwordHash,
           canInvoice: application.canInvoice,
+          country: application.country,
+          city: application.city,
+          website: application.website,
+          instagram: application.instagram,
         },
       });
       await tx.designerApplication.update({

@@ -21,8 +21,28 @@ export class CreateDesignerApplicationDto {
   @MaxLength(20)
   password!: string;
 
+  @IsString()
+  country!: string;
+
+  @IsString()
+  city!: string;
+
   @IsBoolean()
   canInvoice!: boolean;
+
+  @IsString()
+  companySize!: string;
+
+  @IsString()
+  referralSource!: string;
+
+  @IsOptional()
+  @IsString()
+  website?: string;
+
+  @IsOptional()
+  @IsString()
+  instagram?: string;
 
   @IsString()
   category!: string;
@@ -31,7 +51,7 @@ export class CreateDesignerApplicationDto {
   @IsString()
   otherCategory?: string;
 
+  @IsOptional()
   @IsString()
-  @MinLength(10)
-  message!: string;
+  message?: string;
 }

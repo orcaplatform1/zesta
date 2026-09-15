@@ -20,6 +20,11 @@ export class ProductsController {
     return this.products.adminFindAll(query);
   }
 
+  @Get('bestsellers')
+  bestsellers(@Query('limit') limit?: string) {
+    return this.products.bestsellers(limit ? Number(limit) : undefined);
+  }
+
   @Get(':slug')
   findOne(@Param('slug') slug: string) {
     return this.products.findBySlug(slug);

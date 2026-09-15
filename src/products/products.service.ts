@@ -3,6 +3,7 @@ import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateProductDto } from './dto/create-product.dto.js';
 import { QueryProductsDto } from './dto/query-products.dto.js';
 import { UpdateProductDto } from './dto/update-product.dto.js';
+import { computeSoldTotal } from './sales-stats.util.js';
 
 const includeRelations = {
   images: { orderBy: { position: 'asc' as const } },
@@ -36,6 +37,22 @@ export class ProductsService {
     ]);
 
     return { items, total, page, pageSize };
+  }
+
+  // "En Çok Satılan" rozeti için — aynı ürün sayfasındaki simüle "X satıldı"
+  // sayısına göre sıralanır ki iki gösterim birbiriyle çelişmesin (bkz.
+  // sales-stats.util.ts). Gerçek sipariş verisi biriktikçe burası gerçek
+  // satış toplamına göre sıralayacak şekilde güncellenebilir.
+  async bestsellers(limit = 25) {
+    const products = await this.prisma.product.findMany({
+      where: { isActive: true },
+      select: { id: true, createdAt: true },
+    });
+    return products
+      .map((p) => ({ id: p.id, soldTotal: computeSoldTotal(p.id, p.createdAt) }))
+      .sort((a, b) => b.soldTotal - a.soldTotal)
+      .slice(0, limit)
+      .map((p, i) => ({ id: p.id, rank: i + 1 }));
   }
 
   async findBySlug(slug: string) {
