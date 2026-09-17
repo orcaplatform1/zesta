@@ -7,5 +7,6 @@ import { CategoriesService } from './categories.service.js';
   imports: [AuthModule],
   controllers: [CategoriesController],
   providers: [CategoriesService],
+  exports: [CategoriesService],
 })
 export class CategoriesModule {}

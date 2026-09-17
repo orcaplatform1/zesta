@@ -7,5 +7,6 @@ import { ReviewsService } from './reviews.service.js';
   imports: [AuthModule],
   controllers: [ReviewsController],
   providers: [ReviewsService],
+  exports: [ReviewsService],
 })
 export class ReviewsModule {}
