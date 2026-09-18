@@ -2,6 +2,8 @@ import { Body, Controller, Get, HttpCode, Param, Patch, Post, Res, UseGuards } f
 import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { AdminAuthGuard } from '../auth/guards/admin-auth.guard.js';
+import { RolesGuard } from '../auth/guards/roles.guard.js';
+import { Roles } from '../auth/decorators/roles.decorator.js';
 import { AuthService } from '../auth/auth.service.js';
 import { CurrentDesigner } from '../auth/decorators/current-designer.decorator.js';
 import { DesignerAuthGuard } from '../auth/guards/designer-auth.guard.js';
@@ -139,13 +141,15 @@ export class DesignersController {
   }
 
   @Patch('admin/payouts/:id/paid')
-  @UseGuards(AdminAuthGuard)
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('SUPER_ADMIN')
   adminMarkPayoutPaid(@Param('id') id: string) {
     return this.designers.adminMarkPayoutPaid(id);
   }
 
   @Patch('admin/payouts/:id/reject')
-  @UseGuards(AdminAuthGuard)
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('SUPER_ADMIN')
   adminRejectPayout(@Param('id') id: string) {
     return this.designers.adminRejectPayout(id);
   }

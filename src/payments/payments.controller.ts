@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 import { timingSafeEqual } from 'node:crypto';
 import type { Response } from 'express';
 import { AdminAuthGuard } from '../auth/guards/admin-auth.guard.js';
+import { RolesGuard } from '../auth/guards/roles.guard.js';
+import { Roles } from '../auth/decorators/roles.decorator.js';
 import { UpdateIyzicoConfigDto } from './dto/update-iyzico-config.dto.js';
 import { PaymentsService } from './payments.service.js';
 
@@ -14,7 +16,8 @@ export class PaymentsController {
   ) {}
 
   @Get('admin/config')
-  @UseGuards(AdminAuthGuard)
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('SUPER_ADMIN')
   async getConfig() {
     const config = await this.payments.getIyzicoConfig();
     return {
@@ -26,7 +29,8 @@ export class PaymentsController {
   }
 
   @Put('admin/config')
-  @UseGuards(AdminAuthGuard)
+  @UseGuards(AdminAuthGuard, RolesGuard)
+  @Roles('SUPER_ADMIN')
   async setConfig(@Body() dto: UpdateIyzicoConfigDto) {
     const saved = await this.payments.setIyzicoConfig(dto);
     return {
