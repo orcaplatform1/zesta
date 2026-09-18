@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpCode, Post, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuthService } from './auth.service.js';
@@ -13,6 +14,9 @@ export class AdminAuthController {
     private readonly auth: AuthService,
   ) {}
 
+  // Global throttle (120 istek/dk) brute-force için fazla gevşek — admin
+  // girişine özel dakikada 5 deneme sınırı.
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('login')
   @HttpCode(200)
   async login(@Body() dto: AdminLoginDto, @Res({ passthrough: true }) res: Response) {

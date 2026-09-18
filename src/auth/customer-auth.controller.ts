@@ -9,6 +9,7 @@ import {
   UnauthorizedException,
   UseGuards,
 } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { AuthService } from './auth.service.js';
@@ -24,6 +25,9 @@ export class CustomerAuthController {
     private readonly auth: AuthService,
   ) {}
 
+  // Global throttle (120 istek/dk) hesap oluşturma/giriş denemesi (brute-force,
+  // spam kayıt) için fazla gevşek — bu uçlara özel dakikada 5 deneme sınırı.
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('register')
   async register(@Body() dto: RegisterCustomerDto, @Res({ passthrough: true }) res: Response) {
     // E-posta büyük-küçük harfe duyarsız — hem kontrol hem kayıt küçük harfle yapılır.
@@ -48,6 +52,7 @@ export class CustomerAuthController {
     return { id: customer.id, email: customer.email, name: customer.name };
   }
 
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('login')
   @HttpCode(200)
   async login(@Body() dto: LoginDto, @Res({ passthrough: true }) res: Response) {

@@ -1,5 +1,6 @@
 import { Body, Controller, ForbiddenException, Get, Headers, HttpCode, Post, Put, Res, UseGuards } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import { timingSafeEqual } from 'node:crypto';
 import type { Response } from 'express';
 import { AdminAuthGuard } from '../auth/guards/admin-auth.guard.js';
 import { UpdateIyzicoConfigDto } from './dto/update-iyzico-config.dto.js';
@@ -59,8 +60,21 @@ export class PaymentsController {
     @Headers('x-webhook-secret') signature: string | undefined,
   ) {
     const expected = this.config.get<string>('PAYMENT_WEBHOOK_SECRET');
-    if (expected && signature !== expected) throw new ForbiddenException();
+    // Sır tanımlı değilse veya eşleşmiyorsa İSTEK REDDEDİLİR (fail closed) — önceki
+    // `if (expected && ...)` mantığı PAYMENT_WEBHOOK_SECRET ortam değişkeni hiç
+    // ayarlanmamışsa kontrolü tamamen atlıyordu; bu durumda herkes rastgele bir
+    // orderId için "PAID" bildirip siparişi ücretsiz ödenmiş gösterebilirdi.
+    if (!expected || !signature || !this.safeCompare(signature, expected)) {
+      throw new ForbiddenException();
+    }
 
     return this.payments.handleWebhook(body.orderId, body.status, body);
+  }
+
+  private safeCompare(a: string, b: string): boolean {
+    const bufA = Buffer.from(a);
+    const bufB = Buffer.from(b);
+    if (bufA.length !== bufB.length) return false;
+    return timingSafeEqual(bufA, bufB);
   }
 }

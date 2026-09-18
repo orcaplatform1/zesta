@@ -1,4 +1,5 @@
 import { Body, Controller, Get, HttpCode, Param, Patch, Post, Res, UseGuards } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import type { Response } from 'express';
 import { AdminAuthGuard } from '../auth/guards/admin-auth.guard.js';
 import { AuthService } from '../auth/auth.service.js';
@@ -18,6 +19,9 @@ export class DesignersController {
 
   // ---------- Oturum ----------
 
+  // Global throttle (120 istek/dk) brute-force için fazla gevşek — tasarımcı
+  // girişine özel dakikada 5 deneme sınırı.
+  @Throttle({ default: { limit: 5, ttl: 60_000 } })
   @Post('login')
   @HttpCode(200)
   async login(@Body() dto: DesignerLoginDto, @Res({ passthrough: true }) res: Response) {
