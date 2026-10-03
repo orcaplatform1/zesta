@@ -22,6 +22,8 @@ import { ProductsModule } from './products/products.module.js';
 import { ReviewsModule } from './reviews/reviews.module.js';
 import { SettingsModule } from './settings/settings.module.js';
 import { ShippingModule } from './shipping/shipping.module.js';
+import { MailModule } from './mail/mail.module.js';
+import { ContactModule } from './contact/contact.module.js';
 
 @Module({
   imports: [
@@ -45,6 +47,8 @@ import { ShippingModule } from './shipping/shipping.module.js';
     CustomersModule,
     DesignersModule,
     HomeModule,
+    MailModule,
+    ContactModule,
   ],
   controllers: [AppController],
   providers: [AppService, { provide: APP_GUARD, useClass: ThrottlerGuard }],
